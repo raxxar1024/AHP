@@ -3,56 +3,64 @@ import numpy as np
 
 
 class Compare(object):
+    # todo modify comp_type if need be
     """
     This class computes the priority vector and consistency ratio of a positive
     reciprocal matrix. The 'weights' property contains the priority vector as a dictionary
     whose keys are criteria and whose values are the criteria's priority vectors, or weights.
-    The 'CR' property contains the consistency ratio of the input matrix as a float.
-    The 'remainder' property contains the difference between the final two eigenvectors
-    used by the compute_priority_vector function as a numpy array.
-    :param name: string, the name of the Compare object; if the object
-        has a parent, this name MUST exist as a criterion of its parent
-    :param criteria: list of strings, the criteria of the matrix, in the same order as
-        the values in the input matrix
+    The 'CR' property contains the computed consistency ratio of the input matrix as a float.
+    The 'remainder' property contains the difference (as a numpy array) between the final two
+    eigenvectors used by the compute_priority_vector function.
+    :param name: string, the name of the Compare object; if the object has a parent,
+        this name MUST exist as a criterion of its parent
     :param matrix: numpy matrix, the matrix from which to derive the priority vector
-    :param prec: integer, # of decimal places of precision to compute both the priority
-        vector and the consistency ratio
-    :param iters: integer, # of iterations before the compute_eigenvector function stops
-    :param ri: string, the random index estimates used to compute the consistency ratio;
-        valid input: dd, saaty
+    :param criteria: list of strings, the criteria of the matrix, in the same left-to-right
+        order as the values they name in the input matrix
+    :param precision: integer, # of decimal places of precision to compute both the priority
+        vector and the consistency ratio; default is 4
+    :param comp_type: string, IS THIS NECESSARY???
+    :param iters: integer, # of iterations before the compute_eigenvector function stops;
+        default is 100
+    :param random_index: string, the random index estimates used to compute the consistency ratio;
+        valid input: dd, saaty, default is dd
     """
 
-    def __init__(self, name=None, criteria=None, matrix=None, prec=4, prop='qual', iters=100, ri='dd'):
+    def __init__(self, name=None, matrix=None, criteria=None,
+                 precision=4, comp_type='qual', iters=100, random_index='dd'):
         self.name = name
-        self.criteria = criteria
         self.matrix = np.matrix(matrix)
+        self.criteria = criteria
         self.shape = self.matrix.shape[0]
-        self.property = prop
-        self.precision = prec
+        self.type = comp_type
+        self.precision = precision
         self.iterations = iters
-        self.RI = ri.lower()
+        self.RI = random_index.lower()
         self.priority_vector = None
         self.remainder = None
         self.CR = None
         self.weights = None
 
-        self.run()
+        self.compute()
 
-    def run(self):
+    def compute(self):
 
-        if self.matrix is not None:
+        if self.matrix is not None and str(self.matrix) != '[[1]]':
             try:
-                if self.property == 'quant':
+                # If the comparison type is quantitative, normalize the priority vectors
+                if self.type == 'quant':
                     self.normalize()
-                    self.CR = 0.0
+                # If the comparison type is qualitative, compute the priority vector and the
+                # consistency ratio
                 else:
                     self.compute_priority_vector(self.matrix, self.iterations)
                     self.compute_consistency_ratio()
-                # Create the 'weights' dictionary
+                # Create the weights dictionary
                 comp_dict = dict([(key, val[0]) for key, val in zip(self.criteria, self.priority_vector)])
                 self.weights = {self.name: comp_dict}
             except AHPException, err:
                 raise AHPException(err)
+        else:
+            raise AHPException('Input does not contain values for all criteria')
 
         print 'Compare Name:', self.name
         print 'Consistency:', self.CR
@@ -63,7 +71,7 @@ class Compare(object):
     def compute_priority_vector(self, matrix, iterations, comp_eigenvector=None):
         """
         Computes the priority vector of a valid matrix. Sets the 'remainder' and
-        'priority_vector' properties of the ComparisonMatrix object.
+        'priority_vector' properties of the Compare object.
         :param matrix: numpy matrix, the matrix from which to derive the priority vector
         :param iterations: integer, # of iterations before the function stops
         :param comp_eigenvector: numpy array, a comparison eigenvector
@@ -74,11 +82,11 @@ class Compare(object):
         try:
             sq_matrix = np.linalg.matrix_power(matrix, 2)
         except ValueError:
-            raise AHPException('The input matrix is not square')
+            raise AHPException('Input is not square')
         if (self.matrix <= 0).any():
-            raise AHPException('The input matrix contains values less than one')
+            raise AHPException('Input contains values less than one')
         if not (np.multiply(self.matrix, self.matrix.T) == np.ones(self.shape)).all():
-            raise AHPException('The input matrix is not reciprocal')
+            raise AHPException('Input is not reciprocal')
 
         with np.errstate(invalid='ignore'):
             row_sum = np.sum(sq_matrix, 1)
@@ -116,10 +124,10 @@ class Compare(object):
         Computes the consistency ratio of the matrix, using random index estimates from
         Donegan and Dodd's 'A note on Saaty's Random Indexes' in Mathematical and Computer
         Modelling, 15:10, 1991, 135-137 (doi: 10.1016/0895-7177(91)90098-R).
-        If the random index (RI) of the object is set to 'saaty', use the estimates from
+        If the random index of the object is set to 'saaty', use the estimates from
         Saaty, Thomas L. 2005. Theory And Applications Of The Analytic Network Process.
         Pittsburgh: RWS Publications, pg. 31.
-        Sets the 'CR' property of the ComparisonMatrix object.
+        Sets the 'CR' property of the Compare object.
         """
 
         if self.shape < 3:
@@ -137,8 +145,11 @@ class Compare(object):
         random_index = ri_dict[self.shape]
 
         try:
+            # Find the Perron–Frobenius eigenvalue of the matrix
             lambda_max = np.linalg.eigvals(self.matrix).max()
+            # Compute the consistency index
             consistency_index = (lambda_max - self.shape) / (self.shape - 1)
+            # Compute the consistency ratio
             self.CR = (np.real(consistency_index / random_index)).round(self.precision)
         except np.linalg.LinAlgError, error:
             raise AHPException(error)
@@ -147,11 +158,13 @@ class Compare(object):
 
     def normalize(self):
         """
-        Computes the normalized values of a set of numbers.
+        Computes the priority vector of a valid matrix by normalizing the input values and
+        sets the consistency ratio to 0.0.
         """
 
         total_sum = float(np.sum(self.matrix))
         self.priority_vector = np.divide(self.matrix, total_sum).round(self.precision).reshape(len(self.matrix), 1)
+        self.CR = 0.0
         return
 
 
@@ -297,16 +310,16 @@ if __name__ == '__main__':
 
     alt1 = ['Tom', 'Dick', 'Harry']
 
-    exp = Compare('exp', alt1, experience, 3, ri='saaty')
-    edu = Compare('edu', alt1, education, 3, ri='saaty')
-    cha = Compare('cha', alt1, charisma, 3, ri='saaty')
-    age = Compare('age', alt1, age, 3, ri='saaty')
+    exp = Compare('exp', experience, alt1, 3, random_index='saaty')
+    edu = Compare('edu', education, alt1, 3, random_index='saaty')
+    cha = Compare('cha', charisma, alt1, 3, random_index='saaty')
+    age = Compare('age', age, alt1, 3, random_index='saaty')
 
     children = [exp, edu, cha, age]
 
     alt2 = ['exp', 'edu', 'cha', 'age']
 
-    parent = Compare('goal', alt2, criteria, 3, ri='saaty')
+    parent = Compare('goal', criteria, alt2, 3, random_index='saaty')
 
     Compose('goal', parent, children)
 
