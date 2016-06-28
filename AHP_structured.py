@@ -7,37 +7,39 @@ class Compare(object):
     """
     This class computes the priority vector and consistency ratio of a positive
     reciprocal matrix. The 'weights' property contains the priority vector as a dictionary
-    whose keys are criteria and whose values are the criteria's priority vectors, or weights.
-    The 'CR' property contains the computed consistency ratio of the input matrix as a float.
+    whose keys are criteria and whose values are the criteria's weights.
+    The 'consistency_ratio' property contains the computed consistency ratio of the input matrix as a float.
     The 'remainder' property contains the difference (as a numpy array) between the final two
     eigenvectors used by the compute_priority_vector function.
     :param name: string, the name of the Compare object; if the object has a parent,
-        this name MUST exist as a criterion of its parent
+        this name MUST be included as a criterion of its parent
     :param matrix: numpy matrix, the matrix from which to derive the priority vector
-    :param criteria: list of strings, the criteria of the matrix, in the same left-to-right
-        order as the values they name in the input matrix
-    :param precision: integer, # of decimal places of precision to compute both the priority
+    :param criteria: list of strings, the criteria of the matrix, listed in the same left-to-right
+        order as their corresponding values in the input matrix
+    :param precision: integer, number of decimal places of precision to compute both the priority
         vector and the consistency ratio; default is 4
     :param comp_type: string, IS THIS NECESSARY???
-    :param iters: integer, # of iterations before the compute_eigenvector function stops;
+    :param iters: integer, number of iterations before the compute_eigenvector function stops;
         default is 100
     :param random_index: string, the random index estimates used to compute the consistency ratio;
-        valid input: dd, saaty, default is dd
+        valid input: dd, saaty; default is dd; see the compute_consistency_ratio function for more
+        information regarding the different estimates
     """
 
     def __init__(self, name=None, matrix=None, criteria=None,
                  precision=4, comp_type='qual', iters=100, random_index='dd'):
         self.name = name
+        # todo is this safe?
         self.matrix = np.matrix(matrix)
         self.criteria = criteria
         self.shape = self.matrix.shape[0]
         self.type = comp_type
         self.precision = precision
         self.iterations = iters
-        self.RI = random_index.lower()
+        self.random_index = random_index.lower()
         self.priority_vector = None
         self.remainder = None
-        self.CR = None
+        self.consistency_ratio = None
         self.weights = None
 
         self.compute()
@@ -49,7 +51,7 @@ class Compare(object):
                 # If the comparison type is quantitative, normalize the priority vectors
                 if self.type == 'quant':
                     self.normalize()
-                # If the comparison type is qualitative, compute the priority vector and the
+                # If the comparison type is qualitative, compute both the priority vector and the
                 # consistency ratio
                 else:
                     self.compute_priority_vector(self.matrix, self.iterations)
@@ -63,7 +65,7 @@ class Compare(object):
             raise AHPException('Input does not contain values for all criteria')
 
         print 'Compare Name:', self.name
-        print 'Consistency:', self.CR
+        print 'Consistency:', self.consistency_ratio
         for k, v in self.weights[self.name].iteritems():
             print k, round(v, self.precision)
         print
@@ -79,38 +81,54 @@ class Compare(object):
         """
 
         # todo change messages to numbers in a message dictionary
-        try:
-            sq_matrix = np.linalg.matrix_power(matrix, 2)
-        except ValueError:
-            raise AHPException('Input is not square')
+        # todo how to deal with larger matrices?
+        # Test for a positive, reciprocal, square matrix before continuing,
+        # and ensure that a consistency ratio can be computed for the given matrix
+        if (self.random_index == 'saaty' and self.shape > 15) or self.shape > 20:
+            raise AHPException('Input too large: cannot compute consistency ratio')
         if (self.matrix <= 0).any():
             raise AHPException('Input contains values less than one')
         if not (np.multiply(self.matrix, self.matrix.T) == np.ones(self.shape)).all():
             raise AHPException('Input is not reciprocal')
+        try:
+            # Square the matrix
+            sq_matrix = np.linalg.matrix_power(matrix, 2)
+        except ValueError:
+            raise AHPException('Input is not square')
 
         with np.errstate(invalid='ignore'):
+            # Compute the eigenvector by normalizing the rows of the newly squared matrix
             row_sum = np.sum(sq_matrix, 1)
             total_sum = np.sum(row_sum)
             princ_eigenvector = np.divide(row_sum, total_sum).round(self.precision)
-
+            # todo what does this block do?
+            # Check for any weirdness in the computed principal eigenvector
             if np.isnan(princ_eigenvector).any():
+                # todo should this raise an exception?
+                print "np.isnan in input matrix!!! --------------------------------------------------"
                 return
             elif not princ_eigenvector.all():
+                print 'not .all in input matrix!!! ------------------------------------------------------'
                 shape = princ_eigenvector.shape
                 self.remainder = np.zeros(shape)
                 self.priority_vector = np.full(shape, np.true_divide(1, shape[0])).round(self.precision)
                 return
-
+            # Create a zero matrix as the comparison eigenvector if this is the first iteration
             if comp_eigenvector is None:
                 comp_eigenvector = np.zeros(self.shape)
-
+            # Compute the difference between the principal and comparison eigenvectors
             remainder = np.subtract(princ_eigenvector, comp_eigenvector).round(self.precision)
-
+        # If the difference between the two eigenvectors is zero (after rounding to the self.precision variable),
+        # set the current principal eigenvector as the priority vector for the matrix and set the difference
+        # between the two as the remainder, which will always be a zero matrix
         if not np.any(remainder):
             self.remainder = remainder
             self.priority_vector = princ_eigenvector
             return
-
+        # Recursively run the function until either there is no difference between the principal and
+        # comparison eigenvectors, or until the predefined number of iterations has been met, in which
+        # case set the last principal eigenvector as the priority vector and set the difference between
+        # the two as the remainder, which will be a matrix containing non-zero numbers
         iterations -= 1
         if iterations > 0:
             return self.compute_priority_vector(sq_matrix, iterations, princ_eigenvector)
@@ -127,14 +145,14 @@ class Compare(object):
         If the random index of the object is set to 'saaty', use the estimates from
         Saaty, Thomas L. 2005. Theory And Applications Of The Analytic Network Process.
         Pittsburgh: RWS Publications, pg. 31.
-        Sets the 'CR' property of the Compare object.
+        Sets the 'consistency_ratio' property of the Compare object.
         """
-
+        # A valid, square, reciprocal matrix with only one or two rows must be consistent
         if self.shape < 3:
-            self.CR = 0.0
+            self.consistency_ratio = 0.0
             return
-
-        if self.RI == 'saaty':
+        # Determine which random index to use
+        if self.random_index == 'saaty':
             ri_dict = {3: 0.52, 4: 0.89, 5: 1.11, 6: 1.25, 7: 1.35, 8: 1.40, 9: 1.45,
                        10: 1.49, 11: 1.52, 12: 1.54, 13: 1.56, 14: 1.58, 15: 1.59}
         else:
@@ -145,12 +163,12 @@ class Compare(object):
         random_index = ri_dict[self.shape]
 
         try:
-            # Find the Perron–Frobenius eigenvalue of the matrix
+            # Find the Perron Frobenius eigenvalue of the matrix
             lambda_max = np.linalg.eigvals(self.matrix).max()
             # Compute the consistency index
             consistency_index = (lambda_max - self.shape) / (self.shape - 1)
             # Compute the consistency ratio
-            self.CR = (np.real(consistency_index / random_index)).round(self.precision)
+            self.consistency_ratio = (np.real(consistency_index / random_index)).round(self.precision)
         except np.linalg.LinAlgError, error:
             raise AHPException(error)
         finally:
@@ -158,13 +176,13 @@ class Compare(object):
 
     def normalize(self):
         """
-        Computes the priority vector of a valid matrix by normalizing the input values and
+        Computes the priority vector of a valid matrix by normalizing the input values, then
         sets the consistency ratio to 0.0.
         """
 
         total_sum = float(np.sum(self.matrix))
         self.priority_vector = np.divide(self.matrix, total_sum).round(self.precision).reshape(len(self.matrix), 1)
-        self.CR = 0.0
+        self.consistency_ratio = 0.0
         return
 
 
