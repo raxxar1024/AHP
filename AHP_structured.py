@@ -41,7 +41,9 @@ class Compare(object):
         self.consistency_ratio = None
         self.weights = None
 
-        self.check_input(matrix)
+        # self.check_input(matrix)
+        self.matrix = matrix
+        self.shape = self.matrix.shape[0]
         self.compute()
 
     def check_input(self, input_matrix):
@@ -51,7 +53,7 @@ class Compare(object):
         does not exceed 15 or 20 rows, depending on the random index. This ensures that
         every Compare object will have a consistency ratio. If all tests pass, it sets
         the 'matrix' and 'shape' properties of the Compare object.
-        :param input_matrix: numpy matrix, the matrix of the Compare object
+        :param input_matrix: the matrix of the Compare object
         """
 
         # todo change messages to numbers in a message dictionary
@@ -117,16 +119,6 @@ class Compare(object):
         row_sum = np.sum(sq_matrix, 1)
         total_sum = np.sum(row_sum)
         princ_eigenvector = np.divide(row_sum, total_sum).round(self.precision)
-        # todo what does this block do?
-        # if np.isnan(princ_eigenvector).any():
-        #     print "np.isnan in input matrix!!! --------------------------------------------------"
-        #     return
-        # elif not princ_eigenvector.all():
-        #     print 'not .all in input matrix!!! ------------------------------------------------------'
-        #     shape = princ_eigenvector.shape
-        #     self.remainder = np.zeros(shape)
-        #     self.priority_vector = np.full(shape, np.true_divide(1, shape[0])).round(self.precision)
-        #     return
         # Create a zero matrix as the comparison eigenvector if this is the first iteration
         if comp_eigenvector is None:
             comp_eigenvector = np.zeros(self.shape)
@@ -333,31 +325,79 @@ if __name__ == '__main__':
     # Compose('Goal', cr, comp_matrices)
 
     # Example from https://en.wikipedia.org/wiki/Analytic_hierarchy_process_%E2%80%93_leader_example
-    experience = np.matrix([[1, .25, 4], [4, 1, 9], [.25, 1/9., 1]])
-    education = np.matrix([[1, 3, .2], [1/3., 1, 1/7.], [5, 7, 1]])
-    charisma = np.matrix([[1, 5, 9], [.2, 1, 4], [1/9., .25, 1]])
-    age = np.matrix([[1, 1/3., 5], [3, 1, 9], [.2, 1/9., 1]])
-    criteria = np.matrix([[1, 4, 3, 7], [.25, 1, 1/3., 3], [1/3., 3, 1, 5], [1/7., 1/3., .2, 1]])
+    # experience = np.matrix([[1, .25, 4], [4, 1, 9], [.25, 1/9., 1]])
+    # education = np.matrix([[1, 3, .2], [1/3., 1, 1/7.], [5, 7, 1]])
+    # charisma = np.matrix([[1, 5, 9], [.2, 1, 4], [1/9., .25, 1]])
+    # age = np.matrix([[1, 1/3., 5], [3, 1, 9], [.2, 1/9., 1]])
+    # criteria = np.matrix([[1, 4, 3, 7], [.25, 1, 1/3., 3], [1/3., 3, 1, 5], [1/7., 1/3., .2, 1]])
+    #
+    # alt1 = ['Tom', 'Dick', 'Harry']
+    #
+    # exp = Compare('exp', experience, alt1, 3, random_index='saaty')
+    # edu = Compare('edu', education, alt1, 3, random_index='saaty')
+    # cha = Compare('cha', charisma, alt1, 3, random_index='saaty')
+    # age = Compare('age', age, alt1, 3, random_index='saaty')
+    #
+    # children = [exp, edu, cha, age]
+    #
+    # alt2 = ['exp', 'edu', 'cha', 'age']
+    #
+    # parent = Compare('goal', criteria, alt2, 3, random_index='saaty')
+    #
+    # Compose('goal', parent, children)
 
-    alt1 = ['Tom', 'Dick', 'Harry']
+    # Examples from Saaty, Thomas L., 'Decision making with the analytic hierarchy process,'
+    # Int. J. Services Sciences, 1:1, 2008, pp. 83-98.
+    # drinks_val = np.matrix([[1, 9, 5, 2, 1, 1, .5],
+    #                     [1/9., 1, 1/3., 1/9., 1/9., 1/9., 1/9.],
+    #                     [.2, 3, 1, 1/3., .25, 1/3., 1/9.],
+    #                     [.5, 9, 3, 1, .5, 1, 1/3.],
+    #                     [1, 9, 4, 2, 1, 2, .5],
+    #                     [1, 9, 3, 1, .5, 1, 1/3.],
+    #                     [2, 9, 9, 3, 2, 3, 1]])
+    # drinks_cri = ('coffee', 'wine', 'tea', 'beer', 'sodas', 'milk', 'water')
+    # Compare('Drinks', drinks_val, drinks_cri, precision=3, random_index='saaty')
 
-    exp = Compare('exp', experience, alt1, 3, random_index='saaty')
-    edu = Compare('edu', education, alt1, 3, random_index='saaty')
-    cha = Compare('cha', charisma, alt1, 3, random_index='saaty')
-    age = Compare('age', age, alt1, 3, random_index='saaty')
+    # todo solve this problem
+    # salary_m = np.matrix([[1, 4, 3, 6],
+    #                       [.25, 1, 3, 5],
+    #                       [1/3., 1/3., 1, 2],
+    #                       [1/6., .2, .5, 1]])
+    # salary_cri = ('Domestic', 'International', 'College', 'University')
+    # salary = Compare('salary', salary_m, salary_cri, 3, random_index='Saaty')
+    #
+    # flex_m = np.matrix([[1, 1/3., 1/6.],
+    #                     [3, 1, .25],
+    #                     [6, 4, 1]])
+    # flex_cri = ('Location', 'Time', 'Work')
+    # flexibility = Compare('flexibility', flex_m, flex_cri, 3, random_index='saaty')
+    #
+    # children = [salary, flexibility]
+    #
+    # parent_m = np.matrix([[1, .25, 1/6., .25, 1/8.],
+    #                       [4, 1, 1/3., 3, 1/7.],
+    #                       [6, 3, 1, 4, .5],
+    #                       [4, 1/3., .25, 1, 1/7.],
+    #                       [8, 7, 2, 7, 1]])
+    # parent_cri = ('flexibility', 'opportunities', 'security', 'reputation', 'salary')
+    # parent = Compare('Goal', parent_m, parent_cri, 3, random_index='saaty')
+    # Compose('Goal', parent, children)
 
-    children = [exp, edu, cha, age]
+    gas_m = np.matrix([[34], [27], [24], [28]])
+    car_cri = ('civic', 'saturn', 'escort', 'clio')
+    gas = Compare('gas', gas_m, car_cri, 3, comp_type='quant')
 
-    alt2 = ['exp', 'edu', 'cha', 'age']
+    rel_m = np.matrix([[1, 2, 5, 1], [.5, 1, 3, 2], [.2, 1/3., 1, .25], [1, .5, 4, 1]])
+    rel = Compare('rel', rel_m, car_cri, 3)
 
-    parent = Compare('goal', criteria, alt2, 3, random_index='saaty')
+    style_m = np.matrix([[1, .25, 4, 1/6.], [4, 1, 4, .25], [.25, .25, 1, .2], [6, 4, 5, 1]])
+    style = Compare('style', style_m, car_cri, 3)
 
-    Compose('goal', parent, children)
+    cri_m = np.matrix([[1, .5, 3], [2, 1, 4], [1/3., .25, 1]])
+    cri_cri = ('style', 'rel', 'gas')
+    parent = Compare('goal', cri_m, cri_cri)
 
-    # test_matrix = np.matrix([[1]])
-    # test_label = ['test']
-    # test_comparison = Compare('test', test_matrix, test_label)
-
+    Compose('goal', parent, (style, rel, gas))
 
     def convert(matrix):
         new_matrix = []
