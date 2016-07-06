@@ -41,10 +41,37 @@ class Compare(object):
         self.consistency_ratio = None
         self.weights = None
 
-        # self.check_input(matrix)
-        self.matrix = matrix
-        self.shape = self.matrix.shape[0]
+        try:
+            matrix = self.convert(matrix)
+        except AttributeError:
+            pass
+
+        self.check_input(matrix)
+        # self.matrix = matrix
+        # self.shape = self.matrix.shape[0]
         self.compute()
+
+    @staticmethod
+    def convert(matrix_str):
+        """
+        Converts a string of form '1, 2; 3, 4' (or '1 2; 3 4') into a numpy matrix.
+        :returns numpy matrix
+        """
+
+        temp = []
+        try:
+            for x in matrix_str.replace(',', ' ').split(';'):
+                temp.append([eval(y, {'__builtin__': None}, {}) for y in x.split()])
+            print temp
+            dimension = len(temp[0]) + 1
+            new_matrix = np.ones((dimension, dimension))
+            for x, i in enumerate(temp):
+                for y, j in enumerate(i):
+                    new_matrix.itemset((x, x + y + 1), j)
+                    new_matrix.itemset((x + y + 1, x), 1 / j)
+        except ValueError:
+            raise AHPException('The input matrix should follow the numpy form "1 2; 3 4" or "1, 2; 3, 4"')
+        return new_matrix
 
     def check_input(self, input_matrix):
         """
@@ -383,9 +410,10 @@ if __name__ == '__main__':
     # parent = Compare('Goal', parent_m, parent_cri, 3, random_index='saaty')
     # Compose('Goal', parent, children)
 
-    gas_m = np.matrix([[34], [27], [24], [28]])
     car_cri = ('civic', 'saturn', 'escort', 'clio')
-    gas = Compare('gas', gas_m, car_cri, 3, comp_type='quant')
+
+    # gas_m = np.matrix([[34], [27], [24], [28]])
+    # gas = Compare('gas', gas_m, car_cri, 3, comp_type='quant')
 
     rel_m = np.matrix([[1, 2, 5, 1], [.5, 1, 3, 2], [.2, 1/3., 1, .25], [1, .5, 4, 1]])
     rel = Compare('rel', rel_m, car_cri, 3)
@@ -397,18 +425,15 @@ if __name__ == '__main__':
     cri_cri = ('style', 'rel', 'gas')
     parent = Compare('goal', cri_m, cri_cri)
 
-    Compose('goal', parent, (style, rel, gas))
+    # Compose('goal', parent, (style, rel, gas))
 
-    def convert(matrix):
-        new_matrix = []
-        try:
-            for x in matrix.replace(',', ' ').split(';'):
-                new_matrix.append([eval(y, {'__builtin__': None}, {}) for y in x.split()])
-        except ValueError:
-            raise AHPException('The input matrix should follow the numpy form "1 2; 3 4" or "1, 2; 3, 4"')
-        return new_matrix
+    test_m = '1,2,5,1;.5,1,3,2;.2,1/3,1,.25;1,1/2,4,1'
 
+    Compare('test', test_m, car_cri)
 
+    def sym(a):
+        return a + a.T - np.diag(a.diagonal())
 
+    m2 = '2 5 1; 3 2; .25'
 
-
+    Compare('test', m2, car_cri)
