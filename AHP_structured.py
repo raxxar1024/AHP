@@ -46,6 +46,8 @@ class Compare(object):
         except AttributeError:
             pass
 
+        print matrix
+
         self.check_input(matrix)
         # self.matrix = matrix
         # self.shape = self.matrix.shape[0]
@@ -58,20 +60,23 @@ class Compare(object):
         :returns numpy matrix
         """
 
-        temp = []
+        matrix_1 = []
         try:
             for x in matrix_str.replace(',', ' ').split(';'):
-                temp.append([eval(y, {'__builtin__': None}, {}) for y in x.split()])
-            print temp
-            dimension = len(temp[0]) + 1
-            new_matrix = np.ones((dimension, dimension))
-            for x, i in enumerate(temp):
+                matrix_1.append([eval(y, {'__builtin__': None}, {}) for y in x.split()])
+            dimension = len(matrix_1[0]) + 1
+            matrix_2 = np.ones((dimension, dimension))
+            for x, i in enumerate(matrix_1):
                 for y, j in enumerate(i):
-                    new_matrix.itemset((x, x + y + 1), j)
-                    new_matrix.itemset((x + y + 1, x), 1 / j)
+                    matrix_2.itemset((x, x + y + 1), j)
+                    matrix_2.itemset((x + y + 1, x), 1 / j)
+        except IndexError:
+            return matrix_1
+        except (NameError, SyntaxError):
+            raise AHPException('Input contains invalid values')
         except ValueError:
-            raise AHPException('The input matrix should follow the numpy form "1 2; 3 4" or "1, 2; 3, 4"')
-        return new_matrix
+            raise AHPException('Input not in numpy form "1 2; 3 4" or "1, 2; 3, 4"')
+        return matrix_2
 
     def check_input(self, input_matrix):
         """
@@ -427,13 +432,13 @@ if __name__ == '__main__':
 
     # Compose('goal', parent, (style, rel, gas))
 
-    test_m = '1,2,5,1;.5,1,3,2;.2,1/3,1,.25;1,1/2,4,1'
-
-    Compare('test', test_m, car_cri)
+    # test_m = '1,2,5,1;.5,1,3,2;.2,1/3,1,.25;1,1/2,4,1'
+    #
+    # Compare('test', test_m, car_cri)
 
     def sym(a):
         return a + a.T - np.diag(a.diagonal())
 
-    m2 = '2 5 1; 3 2; .25'
+    m2 = '2 5 1; 3 2; 1/4'
 
     Compare('test', m2, car_cri)
