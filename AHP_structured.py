@@ -57,6 +57,7 @@ class Compare(object):
     def convert(matrix_str):
         """
         Converts a string of form '1, 2; 3, 4' (or '1 2; 3 4') into a numpy matrix.
+        :param matrix_str: string, the string to be converted into a numpy matrix
         :returns numpy matrix
         """
 
@@ -72,10 +73,8 @@ class Compare(object):
                     matrix_2.itemset((x + y + 1, x), 1 / j)
         except IndexError:
             return matrix_1
-        except (NameError, SyntaxError):
-            raise AHPException('Input contains invalid values')
-        except ValueError:
-            raise AHPException('Input not in numpy form "1 2; 3 4" or "1, 2; 3, 4"')
+        except (NameError, SyntaxError, ZeroDivisionError, ValueError), error:
+            raise AHPException('Error converting to matrix: {}'.format(error))
         return matrix_2
 
     def check_input(self, input_matrix):
@@ -91,23 +90,24 @@ class Compare(object):
         # todo change messages to numbers in a message dictionary
         try:
             matrix = np.matrix(input_matrix)
-        except:
-            raise AHPException('Input cannot be cast as a matrix')
+        except Exception, error:
+            raise AHPException('Input cannot be cast as a matrix: {}'.format(error))
         shape = matrix.shape[0]
-
-        if (self.random_index == 'saaty' and shape > 15) or shape > 20:
-            raise AHPException('Input too large: cannot compute consistency ratio')
         try:
             if (matrix <= 0).any():
                 raise AHPException('Input contains values less than one')
         except AttributeError:
             raise AHPException('Input contains invalid values')
-        try:
-            np.linalg.matrix_power(matrix, 2)
-        except ValueError:
-            raise AHPException('Input is not square')
-        if not (np.multiply(matrix, matrix.T) == np.ones(shape)).all():
-            raise AHPException('Input is not reciprocal')
+        # Only check these properties for qualitative matrices
+        if self.type != 'quant':
+            if (self.random_index == 'saaty' and shape > 15) or shape > 20:
+                raise AHPException('Input too large: cannot compute consistency ratio')
+            try:
+                np.linalg.matrix_power(matrix, 2)
+            except ValueError, error:
+                raise AHPException('Input is not square: {}'.format(error))
+            if not (np.multiply(matrix, matrix.T) == np.ones(shape)).all():
+                raise AHPException('Input is not reciprocal')
 
         self.matrix = matrix
         self.shape = shape
@@ -220,7 +220,10 @@ class Compare(object):
         """
 
         total_sum = float(np.sum(self.matrix))
-        self.priority_vector = np.divide(self.matrix, total_sum).round(self.precision).reshape(len(self.matrix), 1)
+        try:
+            self.priority_vector = np.divide(self.matrix, total_sum).round(self.precision).reshape(len(self.matrix), 1)
+        except ValueError, error:
+            raise AHPException('Error normalizing quantitative values: {}'.format(error))
         self.consistency_ratio = 0.0
         return
 
@@ -417,11 +420,11 @@ if __name__ == '__main__':
 
     car_cri = ('civic', 'saturn', 'escort', 'clio')
 
-    # gas_m = np.matrix([[34], [27], [24], [28]])
-    # gas = Compare('gas', gas_m, car_cri, 3, comp_type='quant')
+    gas_m = np.matrix([[34], [27], [24], [28]])
+    gas = Compare('gas', gas_m, car_cri, 3, comp_type='quant')
 
     rel_m = np.matrix([[1, 2, 5, 1], [.5, 1, 3, 2], [.2, 1/3., 1, .25], [1, .5, 4, 1]])
-    rel = Compare('rel', rel_m, car_cri, 3)
+    rel = Compare('rel', rel_m, car_cri)
 
     style_m = np.matrix([[1, .25, 4, 1/6.], [4, 1, 4, .25], [.25, .25, 1, .2], [6, 4, 5, 1]])
     style = Compare('style', style_m, car_cri, 3)
@@ -432,13 +435,14 @@ if __name__ == '__main__':
 
     # Compose('goal', parent, (style, rel, gas))
 
-    # test_m = '1,2,5,1;.5,1,3,2;.2,1/3,1,.25;1,1/2,4,1'
-    #
-    # Compare('test', test_m, car_cri)
+    test_m = '1,2,5,1;.5,1,3,2;.2,1/3,1,.25;1,1/2,4,1'
+
+    Compare('test', test_m, car_cri)
 
     def sym(a):
         return a + a.T - np.diag(a.diagonal())
 
     m2 = '2 5 1; 3 2; 1/4'
+    m2 = '34;27;24;28'
 
-    Compare('test', m2, car_cri)
+    Compare('test', m2, car_cri, comp_type='quant')
