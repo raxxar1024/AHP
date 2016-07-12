@@ -439,10 +439,7 @@ if __name__ == '__main__':
 
     Compare('test', test_m, car_cri)
 
-    def sym(a):
-        return a + a.T - np.diag(a.diagonal())
-
     m2 = '2 5 1; 3 2; 1/4'
-    m2 = '34;27;24;28'
+    # m2 = '34;27;24;28'
 
-    Compare('test', m2, car_cri, comp_type='quant')
+    Compare('test', m2, car_cri)
