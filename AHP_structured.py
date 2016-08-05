@@ -87,7 +87,6 @@ class Compare(object):
         :param input_matrix: the matrix of the Compare object
         """
 
-        # todo change messages to numbers in a message dictionary
         try:
             matrix = np.matrix(input_matrix)
         except Exception, error:
@@ -130,7 +129,7 @@ class Compare(object):
             raise AHPException(error)
 
         print 'Compare Name:', self.name
-        print 'Consistency:', self.consistency_ratio
+        print 'Consistency Ratio:', self.consistency_ratio
         for k, v in self.weights[self.name].iteritems():
             print k, round(v, self.precision)
         print
@@ -193,7 +192,8 @@ class Compare(object):
             return
         # Determine which random index to use
         if self.random_index == 'saaty':
-            ri_dict = {3: 0.52, 4: 0.89, 5: 1.11, 6: 1.25, 7: 1.35, 8: 1.40, 9: 1.45,
+            # todo change 3:0.58 to 3:0.52 and 4:0.9 to 4:0.89
+            ri_dict = {3: 0.58, 4: 0.9, 5: 1.11, 6: 1.25, 7: 1.35, 8: 1.40, 9: 1.45,
                        10: 1.49, 11: 1.52, 12: 1.54, 13: 1.56, 14: 1.58, 15: 1.59}
         else:
             ri_dict = {3: 0.4914, 4: 0.8286, 5: 1.0591, 6: 1.1797, 7: 1.2519,
@@ -359,6 +359,7 @@ if __name__ == '__main__':
     # print
     # Compose('Goal', cr, comp_matrices)
 
+    # ----------------------------------------------------------------------------------
     # Example from https://en.wikipedia.org/wiki/Analytic_hierarchy_process_%E2%80%93_leader_example
     # experience = np.matrix([[1, .25, 4], [4, 1, 9], [.25, 1/9., 1]])
     # education = np.matrix([[1, 3, .2], [1/3., 1, 1/7.], [5, 7, 1]])
@@ -381,6 +382,7 @@ if __name__ == '__main__':
     #
     # Compose('goal', parent, children)
 
+    # ----------------------------------------------------------------------------------
     # Examples from Saaty, Thomas L., 'Decision making with the analytic hierarchy process,'
     # Int. J. Services Sciences, 1:1, 2008, pp. 83-98.
     # drinks_val = np.matrix([[1, 9, 5, 2, 1, 1, .5],
@@ -393,53 +395,51 @@ if __name__ == '__main__':
     # drinks_cri = ('coffee', 'wine', 'tea', 'beer', 'sodas', 'milk', 'water')
     # Compare('Drinks', drinks_val, drinks_cri, precision=3, random_index='saaty')
 
-    # todo solve this problem
-    # salary_m = np.matrix([[1, 4, 3, 6],
-    #                       [.25, 1, 3, 5],
-    #                       [1/3., 1/3., 1, 2],
-    #                       [1/6., .2, .5, 1]])
-    # salary_cri = ('Domestic', 'International', 'College', 'University')
-    # salary = Compare('salary', salary_m, salary_cri, 3, random_index='Saaty')
+    # ----------------------------------------------------------------------------------
+    # Example from  Triantaphyllou, E. and Mann, S., 'Using the Analytic Hierarchy Process
+    # for Decision Making in Engineering Applications: Some Challenges,' Int. J. of Industrial
+    # Engineering: Applications and Practice, 2:1, 1995, pp.35-44.
+
+    expand_m = '1 6 8; 1/6 1 4; 1/8 1/4 1'
+    expand_n = ('a', 'b', 'c')
+    expand = Compare('expand', expand_m, expand_n, random_index='saaty')
+
+    maintain_m = '1 7 1/5; 1/7 1 1/8; 5 8 1'
+    maintain_n = ('a', 'b', 'c')
+    maintain = Compare('maintain', maintain_m, maintain_n, random_index='saaty')
+
+    finance_m = '1 8 6; 1/8 1 1/4; 1/6 4 1'
+    finance_n = ('a', 'b', 'c')
+    finance = Compare('finance', finance_m, finance_n, random_index='saaty')
+
+    user_m = '1 5 4; 1/5 1 1/3; 1/4 3 1'
+    user_n = ('a', 'b', 'c')
+    user = Compare('user', user_m, user_n, random_index='saaty')
+
+    cri_m = '1 5 3 7; 1/5 1 1/3 5; 1/3 3 1 6; 1/7 1/5 1/6 1'
+    cri_n = ('expand', 'maintain', 'finance', 'user')
+    cri = Compare('goal', cri_m, cri_n, random_index='saaty')
+
+    Compose('goal', cri, [expand, maintain, finance, user])
+
+
+    # ----------------------------------------------------------------------------------
+    # Example from https://mi.boku.ac.at/ahp/ahptutorial.pdf
     #
-    # flex_m = np.matrix([[1, 1/3., 1/6.],
-    #                     [3, 1, .25],
-    #                     [6, 4, 1]])
-    # flex_cri = ('Location', 'Time', 'Work')
-    # flexibility = Compare('flexibility', flex_m, flex_cri, 3, random_index='saaty')
+    # car_cri = ('civic', 'saturn', 'escort', 'clio')
     #
-    # children = [salary, flexibility]
+    # gas_m = np.matrix([[34], [27], [24], [28]])
+    # gas_m2 = '34;27;24;28'
+    # gas = Compare('gas', gas_m2, car_cri, 3, comp_type='quant')
     #
-    # parent_m = np.matrix([[1, .25, 1/6., .25, 1/8.],
-    #                       [4, 1, 1/3., 3, 1/7.],
-    #                       [6, 3, 1, 4, .5],
-    #                       [4, 1/3., .25, 1, 1/7.],
-    #                       [8, 7, 2, 7, 1]])
-    # parent_cri = ('flexibility', 'opportunities', 'security', 'reputation', 'salary')
-    # parent = Compare('Goal', parent_m, parent_cri, 3, random_index='saaty')
-    # Compose('Goal', parent, children)
-
-    car_cri = ('civic', 'saturn', 'escort', 'clio')
-
-    gas_m = np.matrix([[34], [27], [24], [28]])
-    gas = Compare('gas', gas_m, car_cri, 3, comp_type='quant')
-
-    rel_m = np.matrix([[1, 2, 5, 1], [.5, 1, 3, 2], [.2, 1/3., 1, .25], [1, .5, 4, 1]])
-    rel = Compare('rel', rel_m, car_cri)
-
-    style_m = np.matrix([[1, .25, 4, 1/6.], [4, 1, 4, .25], [.25, .25, 1, .2], [6, 4, 5, 1]])
-    style = Compare('style', style_m, car_cri, 3)
-
-    cri_m = np.matrix([[1, .5, 3], [2, 1, 4], [1/3., .25, 1]])
-    cri_cri = ('style', 'rel', 'gas')
-    parent = Compare('goal', cri_m, cri_cri)
-
+    # rel_m = np.matrix([[1, 2, 5, 1], [.5, 1, 3, 2], [.2, 1/3., 1, .25], [1, .5, 4, 1]])
+    # rel = Compare('rel', rel_m, car_cri)
+    #
+    # style_m = np.matrix([[1, .25, 4, 1/6.], [4, 1, 4, .25], [.25, .25, 1, .2], [6, 4, 5, 1]])
+    # style = Compare('style', style_m, car_cri, 3)
+    #
+    # cri_m = np.matrix([[1, .5, 3], [2, 1, 4], [1/3., .25, 1]])
+    # cri_cri = ('style', 'rel', 'gas')
+    # parent = Compare('goal', cri_m, cri_cri)
+    #
     # Compose('goal', parent, (style, rel, gas))
-
-    test_m = '1,2,5,1;.5,1,3,2;.2,1/3,1,.25;1,1/2,4,1'
-
-    Compare('test', test_m, car_cri)
-
-    m2 = '2 5 1; 3 2; 1/4'
-    # m2 = '34;27;24;28'
-
-    Compare('test', m2, car_cri)
