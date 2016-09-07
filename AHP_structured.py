@@ -46,11 +46,7 @@ class Compare(object):
         except AttributeError:
             pass
 
-        print matrix
-
         self.check_input(matrix)
-        # self.matrix = matrix
-        # self.shape = self.matrix.shape[0]
         self.compute()
 
     @staticmethod
@@ -87,6 +83,9 @@ class Compare(object):
         :param input_matrix: the matrix of the Compare object
         """
 
+        # This occurs if an empty string is passed to the Compare object
+        if len(input_matrix) == 1:
+            raise AHPException('Input matrix is an empty string')
         try:
             matrix = np.matrix(input_matrix)
         except Exception, error:
@@ -192,8 +191,7 @@ class Compare(object):
             return
         # Determine which random index to use
         if self.random_index == 'saaty':
-            # todo change 3:0.58 to 3:0.52 and 4:0.9 to 4:0.89
-            ri_dict = {3: 0.58, 4: 0.9, 5: 1.11, 6: 1.25, 7: 1.35, 8: 1.40, 9: 1.45,
+            ri_dict = {3: 0.52, 4: 0.89, 5: 1.11, 6: 1.25, 7: 1.35, 8: 1.40, 9: 1.45,
                        10: 1.49, 11: 1.52, 12: 1.54, 13: 1.56, 14: 1.58, 15: 1.59}
         else:
             ri_dict = {3: 0.4914, 4: 0.8286, 5: 1.0591, 6: 1.1797, 7: 1.2519,
@@ -203,7 +201,7 @@ class Compare(object):
         random_index = ri_dict[self.shape]
 
         try:
-            # Find the Perron Frobenius eigenvalue of the matrix
+            # Find the Perron-Frobenius eigenvalue of the matrix
             lambda_max = np.linalg.eigvals(self.matrix).max()
             # Compute the consistency index
             consistency_index = (lambda_max - self.shape) / (self.shape - 1)
@@ -247,6 +245,11 @@ class Compose(object):
             print k, ':', round(v, self.precision)
         print
 
+        print self.parent.weights
+        for child in self.children:
+            print child.weights
+        print self.weights
+
     def compute_precision(self):
         """
         Updates the 'precision' property of the Compose object by selecting
@@ -263,6 +266,7 @@ class Compose(object):
         """
 
         for pk, pv in self.parent.weights[self.parent.name].iteritems():
+            print 'here:', pk, pv
             for child in self.children:
 
                 if pk in child.weights:
@@ -358,7 +362,7 @@ if __name__ == '__main__':
     # cr = Compare('Criteria', crit, crits, 3)
     # print
     # Compose('Goal', cr, comp_matrices)
-
+    #
     # ----------------------------------------------------------------------------------
     # Example from https://en.wikipedia.org/wiki/Analytic_hierarchy_process_%E2%80%93_leader_example
     # experience = np.matrix([[1, .25, 4], [4, 1, 9], [.25, 1/9., 1]])
@@ -381,7 +385,7 @@ if __name__ == '__main__':
     # parent = Compare('goal', criteria, alt2, 3, random_index='saaty')
     #
     # Compose('goal', parent, children)
-
+    #
     # ----------------------------------------------------------------------------------
     # Examples from Saaty, Thomas L., 'Decision making with the analytic hierarchy process,'
     # Int. J. Services Sciences, 1:1, 2008, pp. 83-98.
@@ -394,35 +398,32 @@ if __name__ == '__main__':
     #                     [2, 9, 9, 3, 2, 3, 1]])
     # drinks_cri = ('coffee', 'wine', 'tea', 'beer', 'sodas', 'milk', 'water')
     # Compare('Drinks', drinks_val, drinks_cri, precision=3, random_index='saaty')
-
+    #
     # ----------------------------------------------------------------------------------
     # Example from  Triantaphyllou, E. and Mann, S., 'Using the Analytic Hierarchy Process
     # for Decision Making in Engineering Applications: Some Challenges,' Int. J. of Industrial
     # Engineering: Applications and Practice, 2:1, 1995, pp.35-44.
-
-    expand_m = '1 6 8; 1/6 1 4; 1/8 1/4 1'
-    expand_n = ('a', 'b', 'c')
-    expand = Compare('expand', expand_m, expand_n, random_index='saaty')
-
-    maintain_m = '1 7 1/5; 1/7 1 1/8; 5 8 1'
-    maintain_n = ('a', 'b', 'c')
-    maintain = Compare('maintain', maintain_m, maintain_n, random_index='saaty')
-
-    finance_m = '1 8 6; 1/8 1 1/4; 1/6 4 1'
-    finance_n = ('a', 'b', 'c')
-    finance = Compare('finance', finance_m, finance_n, random_index='saaty')
-
-    user_m = '1 5 4; 1/5 1 1/3; 1/4 3 1'
-    user_n = ('a', 'b', 'c')
-    user = Compare('user', user_m, user_n, random_index='saaty')
-
-    cri_m = '1 5 3 7; 1/5 1 1/3 5; 1/3 3 1 6; 1/7 1/5 1/6 1'
-    cri_n = ('expand', 'maintain', 'finance', 'user')
-    cri = Compare('goal', cri_m, cri_n, random_index='saaty')
-
-    Compose('goal', cri, [expand, maintain, finance, user])
-
-
+    #
+    # alt = ('a', 'b', 'c')
+    #
+    # expand_m = '1 6 8; 1/6 1 4; 1/8 1/4 1'
+    # expand = Compare('expand', expand_m, alt, random_index='saaty')
+    #
+    # maintain_m = '1 7 1/5; 1/7 1 1/8; 5 8 1'
+    # maintain = Compare('maintain', maintain_m, alt, random_index='saaty')
+    #
+    # finance_m = '1 8 6; 1/8 1 1/4; 1/6 4 1'
+    # finance = Compare('finance', finance_m, alt, random_index='saaty')
+    #
+    # user_m = '1 5 4; 1/5 1 1/3; 1/4 3 1'
+    # user = Compare('user', user_m, alt, random_index='saaty')
+    #
+    # cri_n = ('expand', 'maintain', 'finance', 'user')
+    # cri_m = '1 5 3 7; 1/5 1 1/3 5; 1/3 3 1 6; 1/7 1/5 1/6 1'
+    # cri = Compare('goal', cri_m, cri_n, random_index='saaty')
+    #
+    # Compose('goal', cri, [maintain, user, finance, expand])
+    #
     # ----------------------------------------------------------------------------------
     # Example from https://mi.boku.ac.at/ahp/ahptutorial.pdf
     #
@@ -443,3 +444,43 @@ if __name__ == '__main__':
     # parent = Compare('goal', cri_m, cri_cri)
     #
     # Compose('goal', parent, (style, rel, gas))
+    #
+    # ----------------------------------------------------------------------------------
+    # Example from https://en.wikipedia.org/wiki/Analytic_hierarchy_process_%E2%80%93_car_example
+
+    cri = ('cost', 'safety', 'style', 'capacity')
+    cri_m = '3 7 3; 9 1; 1/7'
+    criteria = Compare('criteria', cri_m, cri, 3)
+
+    cost_m = '2 5 3; 2 2; .5'
+    cost = Compare('cost', cost_m, ('cost price', 'cost fuel', 'cost maintenance', 'cost resale'), 3)
+
+    capacity_m = '.2'
+    capacity = Compare('capacity', capacity_m, ('capacity cargo', 'capacity passenger'))
+
+    alt = ('Accord Sedan', 'Accord Hybrid', 'Pilot', 'CR-V', 'Element', 'Odyssey')
+
+    cost_price_m = '9 9 1 .5 5; 1 1/9 1/9 1/7; 1/9 1/9 1/7; .5 5; 6'
+    cost_price = Compare('cost price', cost_price_m, alt, 3)
+
+    cost_fuel_m = '1/1.13 1.41 1.15 1.24 1.19; 1.59 1.3 1.4 1.35; 1/1.23 1/1.14 1/1.18; 1.08 1.04; 1/1.04'
+    cost_fuel = Compare('cost fuel', cost_fuel_m, alt, 3)
+
+    cost_resale_m = '3 4 .5 2 2; 2 .2 1 1; 1/6 .5 .5; 4 4; 1'
+    cost_resale = Compare('cost resale', cost_resale_m, alt, 3)
+
+    cost_maint_m = '1.5 4 4 4 5; 4 4 4 5; 1 1.2 1; 1 3; 2'
+    cost_maint = Compare('cost maintenance', cost_maint_m, alt, 3)
+
+    safety_m = '1 5 7 9 1/3; 5 7 9 1/3; 2 9 1/8; 2 1/8; 1/9'
+    safety = Compare('safety', safety_m, alt, 3)
+
+    style_m = '1 7 5 9 6; 7 5 9 6; 1/6 3 1/3; 7 5; .2'
+    style = Compare('style', style_m, alt, 3)
+
+    capacity_pass_m = '1 .5 1 3 .5; .5 1 3 .5; 2 6 1; 3 .5; 1/6'
+    capacity_pass = Compare('capacity passenger', capacity_pass_m, alt, 3)
+
+    capacity_cargo_m = '1 .5 .5 .5 1/3; .5 .5 .5 1/3; 1 1 .5; 1 .5; .5'
+    capacity_cargo = Compare('capacity cargo', capacity_cargo_m, alt, 3)
+
