@@ -8,8 +8,6 @@ class Compare(object):
     reciprocal matrix. The 'weights' property contains the priority vector as a dictionary
     whose keys are criteria and whose values are the criteria's weights.
     The 'consistency_ratio' property contains the computed consistency ratio of the input matrix as a float.
-    The 'remainder' property contains the difference (as a numpy array) between the final two
-    eigenvectors used by the compute_priority_vector function.
     :param name: string, the name of the Compare object; if the object has a parent,
         this name MUST be included as a criterion of its parent
     :param matrix: numpy matrix, the matrix from which to derive the priority vector
@@ -37,7 +35,6 @@ class Compare(object):
         self.iterations = iters
         self.random_index = random_index.lower()
         self.priority_vector = None
-        self.remainder = None
         self.consistency_ratio = None
         self.weights = None
 
@@ -53,6 +50,9 @@ class Compare(object):
     def convert(matrix_str):
         """
         Converts a string of form '1, 2; 3, 4' (or '1 2; 3 4') into a numpy matrix.
+        Also converts a string representing only and all entries above the main
+        diagonal into a positive, square, reciprocal matrix.
+        For example, '2, 3; 4' converts to '1, 2, 3; .5, 1, 4; 1/3, .25, 1'.
         :param matrix_str: string, the string to be converted into a numpy matrix
         :returns numpy matrix
         """
@@ -83,7 +83,7 @@ class Compare(object):
         :param input_matrix: the matrix of the Compare object
         """
 
-        # This occurs if an empty string is passed to the Compare object
+        # Input length equals one if an empty string is passed to the Compare object
         if len(input_matrix) == 1:
             raise AHPException('Input matrix is an empty string')
         try:
@@ -126,12 +126,6 @@ class Compare(object):
             self.weights = {self.name: comp_dict}
         except Exception, error:
             raise AHPException(error)
-
-        print 'Compare Name:', self.name
-        print 'Consistency Ratio:', self.consistency_ratio
-        for k, v in self.weights[self.name].iteritems():
-            print k, round(v, self.precision)
-        print
         return
 
     def compute_priority_vector(self, matrix, iterations, comp_eigenvector=None):
@@ -155,21 +149,17 @@ class Compare(object):
         # Compute the difference between the principal and comparison eigenvectors
         remainder = np.subtract(princ_eigenvector, comp_eigenvector).round(self.precision)
         # If the difference between the two eigenvectors is zero (after rounding to the self.precision variable),
-        # set the current principal eigenvector as the priority vector for the matrix and set the difference
-        # between the two as the remainder, which will always be a zero matrix
+        # set the current principal eigenvector as the priority vector for the matrix
         if not np.any(remainder):
-            self.remainder = remainder
             self.priority_vector = princ_eigenvector
             return
         # Recursively run the function until either there is no difference between the principal and
         # comparison eigenvectors, or until the predefined number of iterations has been met, in which
-        # case set the last principal eigenvector as the priority vector and set the difference between
-        # the two as the remainder, which will be a matrix containing non-zero numbers
+        # case set the last principal eigenvector as the priority vector
         iterations -= 1
         if iterations > 0:
             return self.compute_priority_vector(sq_matrix, iterations, princ_eigenvector)
         else:
-            self.remainder = remainder
             self.priority_vector = princ_eigenvector
             return
 
@@ -225,6 +215,15 @@ class Compare(object):
         self.consistency_ratio = 0.0
         return
 
+    def report(self):
+        print 'Name:', self.name
+        print 'CR:', self.consistency_ratio
+        print 'Weights:'
+        for k, v in self.weights[self.name].iteritems():
+            print '\t{}: {}'.format(k, round(v, self.precision))
+        print
+        return
+
 
 class Compose(object):
 
@@ -253,10 +252,14 @@ class Compose(object):
     def compute_precision(self):
         """
         Updates the 'precision' property of the Compose object by selecting
-        the lowest precision of all its children.
+        the lowest precision of all input matrices.
         """
 
-        self.precision = np.min([child.precision for child in self.children])
+        precision = np.min([child.precision for child in self.children])
+        if precision < self.parent.precision:
+            self.precision = precision
+        else:
+            self.precision = self.parent.precision
         return
 
     def compute_total_priority(self):
@@ -456,6 +459,7 @@ if __name__ == '__main__':
 
     cost_sub_m = '2 5 3; 2 2; .5'
     cost_sub = Compare('cost', cost_sub_m, ('cost price', 'cost fuel', 'cost maintenance', 'cost resale'))
+    cost_sub.report()
 
     cost_price_m = '9 9 1 .5 5; 1 1/9 1/9 1/7; 1/9 1/9 1/7; .5 5; 6'
     cost_price = Compare('cost price', cost_price_m, alt)
@@ -487,3 +491,9 @@ if __name__ == '__main__':
     cost = Compose('cost', cost_sub, (cost_price, cost_fuel, cost_resale, cost_maint))
     capacity = Compose('capacity', capacity_sub, (capacity_cargo, capacity_pass))
     goal = Compose('goal', criteria, (cost, safety, style, capacity))
+
+    print goal.name
+    print goal.parent
+    print goal.children
+    print goal.precision
+    print goal.weights
