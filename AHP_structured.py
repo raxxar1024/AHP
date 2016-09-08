@@ -98,7 +98,7 @@ class Compare(object):
             raise AHPException('Input contains invalid values')
         # Only check these properties for qualitative matrices
         if self.type != 'quant':
-            if (self.random_index == 'saaty' and shape > 15) or shape > 20:
+            if (self.random_index == 'saaty' and shape > 15) or shape > 100:
                 raise AHPException('Input too large: cannot compute consistency ratio')
             try:
                 np.linalg.matrix_power(matrix, 2)
@@ -174,7 +174,6 @@ class Compare(object):
         Sets the 'consistency_ratio' property of the Compare object.
         """
 
-        # todo how to deal with larger matrices?
         # A valid, square, reciprocal matrix with only one or two rows must be consistent
         if self.shape < 3:
             self.consistency_ratio = 0.0
@@ -187,8 +186,19 @@ class Compare(object):
             ri_dict = {3: 0.4914, 4: 0.8286, 5: 1.0591, 6: 1.1797, 7: 1.2519,
                        8: 1.3171, 9: 1.3733, 10: 1.4055, 11: 1.4213, 12: 1.4497,
                        13: 1.4643, 14: 1.4822, 15: 1.4969, 16: 1.5078, 17: 1.5153,
-                       18: 1.5262, 19: 1.5313, 20: 1.5371}
-        random_index = ri_dict[self.shape]
+                       18: 1.5262, 19: 1.5313, 20: 1.5371, 25: 1.5619, 30: 1.5772,
+                       40: 1.5976, 50: 1.6102, 60: 1.6178, 70: 1.6237, 80: 1.6277,
+                       90: 1.6213, 100: 1.6339}
+
+        try:
+            random_index = ri_dict[self.shape]
+        except KeyError:
+            import bisect
+            s = sorted(ri_dict)
+            smaller = s[bisect.bisect_left(s, self.shape) - 1]
+            larger = s[bisect.bisect_right(s, self.shape)]
+            estimate = (ri_dict[larger] - ri_dict[smaller]) / (larger - smaller)
+            random_index = estimate * (self.shape - smaller) + ri_dict[smaller]
 
         try:
             # Find the Perron-Frobenius eigenvalue of the matrix
@@ -238,17 +248,6 @@ class Compose(object):
         self.compute_total_priority()
         self.normalize_total_priority()
 
-        # todo remove this
-        print 'Compose Name:', self.name
-        for k, v in self.weights[self.parent.name].iteritems():
-            print k, ':', round(v, self.precision)
-        print
-
-        print self.parent.weights
-        for child in self.children:
-            print child.weights
-        print self.weights
-
     def compute_precision(self):
         """
         Updates the 'precision' property of the Compose object by selecting
@@ -269,7 +268,6 @@ class Compose(object):
         """
 
         for pk, pv in self.parent.weights[self.parent.name].iteritems():
-            print 'here:', pk, pv
             for child in self.children:
 
                 if pk in child.weights:
@@ -290,6 +288,19 @@ class Compose(object):
         total_sum = sum(self.weights.itervalues())
         comp_dict = {key: np.divide(value, total_sum) for key, value in self.weights.iteritems()}
         self.weights = {self.name: comp_dict}
+        return
+
+    def report(self):
+        print 'Name:', self.name
+        for k, v in self.weights[self.parent.name].iteritems():
+            print k, ':', round(v, self.precision)
+        print
+
+        print self.parent.weights
+        for child in self.children:
+            print child.weights
+        print self.weights
+        print
         return
 
 
@@ -481,6 +492,7 @@ if __name__ == '__main__':
 
     capacity_sub_m = '.2'
     capacity_sub = Compare('capacity', capacity_sub_m, ('capacity cargo', 'capacity passenger'))
+    capacity_sub.report()
 
     capacity_pass_m = '1 .5 1 3 .5; .5 1 3 .5; 2 6 1; 3 .5; 1/6'
     capacity_pass = Compare('capacity passenger', capacity_pass_m, alt)
@@ -492,8 +504,11 @@ if __name__ == '__main__':
     capacity = Compose('capacity', capacity_sub, (capacity_cargo, capacity_pass))
     goal = Compose('goal', criteria, (cost, safety, style, capacity))
 
-    print goal.name
-    print goal.parent
-    print goal.children
-    print goal.precision
-    print goal.weights
+    m = '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1;' \
+        '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1;' \
+        '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1;' \
+        '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1 1 1 1 1;' \
+        '1 1 1 1 1 1 8 1 1 1 1 1; 1 1 1 1 1 1 1 2 1 1 1; 1 1 1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1 1 1;' \
+        '1 1 1 1 1 1 1 1; 1 1 1 1 1 1 1; 1 1 1 1 1 1; 1 1 1 1 1; 1 1 1 1; 1 1 1; 1 1; 1'
+    t = Compare('test', m, ('abcdefghijklmnop'))
+    t.report()
