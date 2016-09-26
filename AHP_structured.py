@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+from collections import OrderedDict
 
 
 class Compare(object):
@@ -122,7 +123,7 @@ class Compare(object):
                 self.compute_priority_vector(self.matrix, self.iterations)
                 self.compute_consistency_ratio()
             # Create the weights dictionary
-            comp_dict = dict([(key, val[0]) for key, val in zip(self.criteria, self.priority_vector)])
+            comp_dict = OrderedDict([(key, val[0]) for key, val in zip(self.criteria, self.priority_vector)])
             self.weights = {self.name: comp_dict}
         except Exception, error:
             raise AHPException(error)
@@ -241,7 +242,7 @@ class Compose(object):
         self.name = name
         self.parent = parent
         self.children = children
-        self.weights = dict()
+        self.weights = OrderedDict()
         self.precision = None
 
         self.compute_precision()
